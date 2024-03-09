@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate 2FA Codes</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .input-container {
+            margin-bottom: 20px;
+            position: relative;
+        }
+        .input-container textarea {
+            width: calc(100% - 22px); /* 22px 是 padding 和 border 的总宽度 */
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            resize: vertical;
+        }
+        .timestamp {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 14px;
+            color: #777;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #codes {
+            margin-top: 20px;
+        }
+        #codes p {
+            margin: 5px 0;
+        }
+        #currentTime {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Generate 2FA Codes</h1>
+    <div class="input-container">
+        <div class="timestamp" id="currentTime"></div>
+        <textarea id="secretKeys" rows="5" placeholder="Enter secret keys, one per line"></textarea>
+    </div>
+    <button onclick="generateCodes()">Generate Codes</button>
+
+    <h2>2FA Codes</h2>
+    <div id="codes"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/otpauth@3.0.0/dist/otpauth.min.js"></script>
+
+    <script>
+        function generateCodes() {
+            var secretKeys = document.getElementById('secretKeys').value.trim().split('\n');
+            var codes = secretKeys.map(generateCode);
+            displayCodes(codes);
+        }
+
+        function generateCode(secretKey, index) {
+            var secret = base32Decode(secretKey);
+            var otp = new OTPAuth.TOTP({
+                algorithm: 'SHA1',
+                digits: 6,
+                period: 30,
+                secret: secret
+            });
+            return {
+                index: index + 1,
+                code: otp.generate()
+            };
+        }
+
+        function displayCodes(codes) {
+            var codesContainer = document.getElementById('codes');
+            codesContainer.innerHTML = codes.map(code => `<p>${code.index}. ${code.code}</p>`).join('');
+        }
+
+        function base32Decode(base32String) {
+            var charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+            var bits = "";
+            var decoded = [];
+
+            for (var i = 0; i < base32String.length; i++) {
+                var val = charset.indexOf(base32String.charAt(i).toUpperCase());
+                if (val >= 0) {
+                    bits += ("00000" + val.toString(2)).slice(-5);
+                }
+            }
+
+            for (var i = 0; i + 8 <= bits.length; i += 8) {
+                decoded.push(parseInt(bits.substr(i, 8), 2));
+            }
+
+            return new Uint8Array(decoded);
+        }
+
+        function updateCurrentTime() {
+            var currentTime = new Date().toLocaleTimeString();
+            document.getElementById('currentTime').textContent = 'Current Time: ' + currentTime;
+        }
+
+        // Update current time every second
+        setInterval(updateCurrentTime, 1000);
+    </script>
+</body>
+</html>
